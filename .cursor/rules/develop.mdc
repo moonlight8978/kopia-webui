@@ -55,6 +55,17 @@ golangci-lint run
   - Typed config file loaded at startup (path via env var/flag), validated strictly.
 - Validate configuration on boot; fail fast with clear errors.
 
+## Input and configuration validation
+- Prefer hand-written validation on typed structs via a `Validate() error` method; avoid heavy validation frameworks unless necessary.
+- Config files: use strict decoders that reject unknown fields (e.g., JSON decoder with `DisallowUnknownFields()`, YAML decoder with `KnownFields(true)`).
+- Treat all external inputs as untrusted: env vars, flags, HTTP params/bodies, Kubernetes objects.
+- HTTP handlers: bind inputs into typed request structs, validate required fields, enums, and ranges, then return `400 Bad Request` on invalid input with concise, non-sensitive messages.
+- Configuration: require explicit values where zero-values are ambiguous; document defaults; normalize then validate when needed.
+- Kubernetes discovery: validate label/annotation selectors; ensure required secret keys exist and have expected formats; never log secret values.
+- Template data: pass only validated, typed view models to `html/template`; avoid passing raw/unvalidated user input.
+- Error reporting: include which field failed and why, but never echo secrets or sensitive content; use structured logs with stable keys.
+- Tests: add table-driven tests for config loading/validation (valid/invalid, unknown fields, missing required, edge cases) and for HTTP input validation paths.
+
 ## Formatting and linting
 - Run before commit/CI:
   - `go fmt ./...` and `goimports` (or editor integration)
