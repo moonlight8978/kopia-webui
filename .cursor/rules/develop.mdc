@@ -1,0 +1,74 @@
+---
+alwaysApply: true
+---
+
+## Scope
+- **Project type**: Web application
+- **Backend**: Go (`chi` router)
+- **Frontend**: Server-rendered HTML via Go `html/template`
+- **Repository sources**: Kubernetes in-cluster discovery (service account) or config file
+
+## Principles
+- **Type-strict**: Prefer concrete types and typed DTOs/view models over `interface{}`/`map[string]any`.
+- **Simplicity**: Choose the simplest workable design; avoid unnecessary abstractions.
+- **Conventions**: Follow standard Go conventions (naming, package layout, error handling, comments).
+- **Formatting**: Code must be auto-formatted and linted before commit.
+- **Security by default**: Never log secrets; least-privilege for Kubernetes access.
+- **Test-first**: Always write tests before implementing or changing behavior.
+
+## Test-first workflow
+1. Define behavior with table-driven tests.
+2. Use `httptest` for HTTP handlers and middlewares.
+3. Use fakes for external deps (Kubernetes client-go fakes) to avoid network access.
+4. Add template rendering tests with typed view models.
+5. Run tests locally and in CI; keep them fast and deterministic.
+
+Suggested commands:
+```bash
+go test ./...
+golangci-lint run
+```
+
+## Backend (Go, chi)
+- Use `chi.Router` with standard middlewares; prefer context-aware handlers.
+- Define request/response structs; avoid untyped maps in handler I/O.
+- Validate input early; return proper HTTP status codes with minimal payloads.
+- Keep handlers thin; put logic in small, testable services with interfaces where needed.
+- Prefer early returns over deep nesting; avoid catch-all error wrappers.
+
+## Frontend (Go templates)
+- Use `html/template` (auto-escaping). Do not use `text/template` for HTML.
+- Pass typed view models; avoid `map[string]any` for template data.
+- Pre-parse templates at startup; handle parse errors on boot.
+- Keep templates simple; push formatting/conditionals to view models when possible.
+
+## Kubernetes integration (repository discovery)
+- In cluster: authenticate via service account using `rest.InClusterConfig()`.
+- Local/dev: support kubeconfig discovery for developer workflows without changing code.
+- Discover Kopia repository secrets via label/annotation selectors specified in config.
+- Never log secret values; read only required keys. Respect RBAC and least-privilege.
+- Wrap Kubernetes access behind a small, typed interface to enable fakes in tests.
+
+## Configuration
+- Support two sources for repositories:
+  - In-cluster Kubernetes discovery (service account auth).
+  - Typed config file loaded at startup (path via env var/flag), validated strictly.
+- Validate configuration on boot; fail fast with clear errors.
+
+## Formatting and linting
+- Run before commit/CI:
+  - `go fmt ./...` and `goimports` (or editor integration)
+  - `golangci-lint run` with a sensible, fast ruleset
+- Keep imports grouped and ordered; no unused code.
+
+## Error handling and logging
+- Return errors with context using `%w`; avoid custom global error registries.
+- Do not log secrets, tokens, or repository credentials.
+- Use structured logs with stable keys; keep messages concise.
+
+## Definition of done (per change)
+- Tests exist and pass (including new cases for behavior changes).
+- Code is formatted, linted, and follows conventions.
+- No untyped data structures in new/changed code unless strictly necessary.
+- Security reviewed (secrets safe, least privilege preserved).
+- Docs/comments updated where non-obvious behavior exists.
